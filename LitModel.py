@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torchmetrics
 from torchmetrics import MetricCollection
+from datetime import datetime
 
 class LitModel(L.LightningModule):
     def __init__(self):
@@ -45,7 +46,7 @@ class LitModel(L.LightningModule):
         outputs = self.model(x)
         loss = self.loss(outputs, y)
         self.log('val_loss', loss)
-        self.val_metrics(outputs, y)
+        self.val_metrics.update(outputs, y)
         # self.log('val_accuracy', self.accuracy, on_step=False, on_epoch=True, prog_bar=True) # Do not log every step 
         
     
@@ -53,6 +54,8 @@ class LitModel(L.LightningModule):
         x, y = batch
         outputs = self.model(x)
         self.test_metrics(outputs, y)
+        self.test_metrics.update(outputs, y)
+        self.log_dict(self.test_metrics, on_step=False, on_epoch=True, prog_bar=True)
     
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=0.1)
