@@ -3,6 +3,9 @@ import torch.nn as nn
 import torchvision
 import matplotlib.pyplot as plt
 import os
+import lightning as L
+from LitModel import LitModel
+from datetime import datetime
 
 def main():
     convert_to_tensor = torchvision.transforms.ToTensor()
@@ -151,11 +154,27 @@ def main():
 
     print('Accuracy of the model on the test images: %d %%' % (100 * correct / total))
 
+def exercise_8():
+    convert_to_tensor = torchvision.transforms.ToTensor()
 
+    train_cifar10 = torchvision.datasets.CIFAR10('CIFAR10', download=True, train=True, transform=convert_to_tensor)
+    test_cifar10 = torchvision.datasets.CIFAR10('CIFAR10', train=False, transform=convert_to_tensor)
 
+    model = LitModel()
 
+    train_cifar10, val_cifar10 = torch.utils.data.random_split(train_cifar10, [0.75, 0.25])
 
+    cifar10_classes = ['airplane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+
+    train_loader = torch.utils.data.DataLoader(train_cifar10, batch_size=64, num_workers=2)
+    val_loader = torch.utils.data.DataLoader(val_cifar10, batch_size=64, num_workers=2)
+    test_loader = torch.utils.data.DataLoader(test_cifar10, batch_size=64, num_workers=2)
+
+    trainer  = L.Trainer(max_epochs=10, accelerator="gpu", devices=1)
+    trainer.fit(model, train_loader, val_loader)
+
+    trainer.test(model, test_loader)
 
 if __name__ == "__main__":
-    main()
+    exercise_8()
 
