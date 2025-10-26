@@ -55,7 +55,7 @@ class LitModelSimpleNN(L.LightningModule):
         self.val_metrics = self.metrics.clone(prefix='val_')
         self.test_metrics = self.metrics.clone(prefix='test_')
     
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch):
         x, y = batch
         outputs = self.model(x)
         loss = self.loss(outputs, y)
@@ -65,19 +65,20 @@ class LitModelSimpleNN(L.LightningModule):
         self.log_dict(self.train_metrics, on_step=False, on_epoch=True, prog_bar=True)
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch):
         x, y = batch
         outputs = self.model(x)
         loss = self.loss(outputs, y)
         self.log('val_loss', loss)
         self.val_metrics.update(outputs, y)
-        # self.log('val_accuracy', self.accuracy, on_step=False, on_epoch=True, prog_bar=True) # Do not log every step 
+        self.log_dict(self.val_metrics, on_step=False, on_epoch=True, prog_bar=True) # Do not log every step 
         
     
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch):
         x, y = batch
         outputs = self.model(x)
         self.test_metrics.update(outputs, y)
+        self.log_dict(self.test_metrics, on_step=False, on_epoch=True, prog_bar=True)
     
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=0.1)
