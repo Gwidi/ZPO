@@ -19,6 +19,7 @@ class SimpleCNN(nn.Module):
         # Fully connected layers
         self.fc1 = nn.Linear(128 * 4 * 4, 256)
         self.fc2 = nn.Linear(256, num_classes)
+        self.dropout = nn.Dropout(p=0.5)  # 50% dropout
 
         
     def forward(self, x):
@@ -34,6 +35,7 @@ class SimpleCNN(nn.Module):
         x = self.flatten(x)
         x = self.fc1(x)
         x = self.relu(x)
+        x = self.dropout(x)
         x = self.fc2(x)
 
         return x
@@ -67,7 +69,7 @@ class LitModelSimpleCNN(L.LightningModule):
         x, y = batch
         outputs = self.model(x)
         loss = self.loss(outputs, y)
-        #self.log('val_loss', loss)
+        self.log('val_loss', loss)
         self.val_metrics.update(outputs, y)
         self.log_dict(self.val_metrics, on_step=False, on_epoch=True, prog_bar=True) # Do not log every step 
         
