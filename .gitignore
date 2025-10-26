@@ -1,0 +1,4 @@
+CIFAR10
+lightning_logs
+__pycache__/
+*.pt
