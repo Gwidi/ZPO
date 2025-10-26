@@ -3,9 +3,10 @@ import torch
 import torchvision
 import os
 import glob
+from PIL import Image
 
 def read_image(img_path):
-        return torchvision.io.read_image(img_path)
+    return Image.open(img_path).convert('RGB')
 
 
 class CatsvsDogs(Dataset):
