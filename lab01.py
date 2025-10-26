@@ -7,6 +7,7 @@ import lightning as L
 from LitModel import LitModel
 from datetime import datetime
 from LitModelSimpleNN import LitModelSimpleNN
+from LitModelSimpleCNN import LitModelSimpleCNN
 
 def main():
     convert_to_tensor = torchvision.transforms.ToTensor()
@@ -197,6 +198,26 @@ def exercise_9():
 
     trainer.test(model, test_loader)
 
+def exercise_10():
+    convert_to_tensor = torchvision.transforms.ToTensor()
+
+    train_cifar10 = torchvision.datasets.CIFAR10('CIFAR10', download=True, train=True, transform=convert_to_tensor)
+    test_cifar10 = torchvision.datasets.CIFAR10('CIFAR10', train=False, transform=convert_to_tensor)
+
+    model = LitModelSimpleCNN()
+
+    train_cifar10, val_cifar10 = torch.utils.data.random_split(train_cifar10, [0.75, 0.25])
+
+    train_loader = torch.utils.data.DataLoader(train_cifar10, batch_size=64, num_workers=2)
+    val_loader = torch.utils.data.DataLoader(val_cifar10, batch_size=64, num_workers=2)
+    test_loader = torch.utils.data.DataLoader(test_cifar10, batch_size=64, num_workers=2)
+
+    trainer = L.Trainer(max_epochs=10, accelerator="gpu", devices=1)
+    trainer.fit(model, train_loader, val_loader)
+
+    trainer.test(model, test_loader)
+    
+
 if __name__ == "__main__":
-    exercise_9()
+    exercise_10()
 
