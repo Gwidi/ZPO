@@ -41,10 +41,10 @@ class SimpleCNN(nn.Module):
         return x
 
 class LitModelSimpleCNN(L.LightningModule):
-    def __init__(self):
+    def __init__(self, num_classes=10):
         super().__init__()
-        classes = 10
-        self.model = SimpleCNN()
+        classes = num_classes
+        self.model = SimpleCNN(num_classes=num_classes)
         self.loss = nn.CrossEntropyLoss()
         self.metrics = MetricCollection([
             torchmetrics.Accuracy(num_classes=classes, task="multiclass"),
