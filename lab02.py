@@ -47,7 +47,7 @@ def main():
 
 
     # Load ResNet-18 model
-    resnet18 = models.resnet18(weights=None)
+    resnet18 = models.resnet18(weights="IMAGENET1K_V1")
     resnet18.fc = nn.Linear(resnet18.fc.in_features, 37)
 
     # Initialize the model and trainer
