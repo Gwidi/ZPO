@@ -18,7 +18,7 @@ def main():
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    # Define augmentations for training data (5 different) - task 5 
+    # Define augmentations for training data (5 different) - task 3 
     augmentations = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(15),
@@ -39,7 +39,7 @@ def main():
 
     train_OxfordIIITPet, val_OxfordIIITPet = torch.utils.data.random_split(train_dataset, [0.75, 0.25])
     # Apply augmentations only to training dataset
-    train_OxfordIIITPet.dataset.transform = augmentations
+    # train_OxfordIIITPet.dataset.transform = augmentations
 
     train_loader = torch.utils.data.DataLoader(train_OxfordIIITPet, batch_size=64, num_workers=2)
     val_loader = torch.utils.data.DataLoader(val_OxfordIIITPet, batch_size=64, num_workers=2)
@@ -48,7 +48,12 @@ def main():
 
     # Load ResNet-18 model
     resnet18 = models.resnet18(weights="IMAGENET1K_V1")
-    resnet18.fc = nn.Linear(resnet18.fc.in_features, 37)
+    # Freeze all the layers except the final layer
+    for param in resnet18.parameters():
+        param.requires_grad = False
+    num_classes = 37
+    num_ftrs = resnet18.fc.in_features
+    resnet18.fc = nn.Linear(num_ftrs, num_classes)
 
     # Initialize the model and trainer
     model = LitResNet18(resnet18, num_classes=37)

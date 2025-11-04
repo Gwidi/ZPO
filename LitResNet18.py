@@ -16,9 +16,6 @@ class LitResNet18(L.LightningModule):
         
         # Use pre-trained ResNet18 model
         self.model = model
-
-        # Change the last layer to match our number of classes
-        self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
         
         self.loss = nn.CrossEntropyLoss()
 
