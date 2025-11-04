@@ -3,3 +3,4 @@ torch
 torchvision --index-url https://download.pytorch.org/whl/cu126
 matplotlib
 lightning
+mlflow

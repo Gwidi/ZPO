@@ -7,6 +7,9 @@ import torchvision.transforms as transforms
 from torchvision.datasets import OxfordIIITPet
 from torch.utils.data import DataLoader
 from LitResNet18 import LitResNet18
+from lightning.pytorch import Trainer
+from lightning.pytorch.loggers import MLFlowLogger
+
 
 
 def main():
@@ -59,7 +62,10 @@ def main():
     model = LitResNet18(resnet18, num_classes=37)
 
     # Exercise 2 Train the model and verify its performance on the test set.
-    trainer = L.Trainer(max_epochs=10, accelerator='gpu')
+    experiment_name = "resnet18_finetune_oxfordiiitpet"
+    run_name = "basic_finetuning"
+    mlf_logger = MLFlowLogger(experiment_name=experiment_name, run_name=run_name, tracking_uri="file:./mlruns")
+    trainer = L.Trainer(max_epochs=10, accelerator='gpu', logger=mlf_logger)
     trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     trainer.test(model, test_loader)
 
