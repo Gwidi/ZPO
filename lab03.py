@@ -10,6 +10,8 @@ import torch.nn.functional as F
 from torchvision import models
 from torchvision import transforms
 from PIL import Image
+from torchviz import make_dot
+
 
 def main():
     # Task 1
@@ -63,7 +65,25 @@ def postprocess(output: torch.Tensor, labels: dict[int, str]) -> tuple[str, int,
     predicted_label = labels[pred_label_idx.item()]
     return predicted_label, pred_label_idx, prediction_score.item()
 
+def task4():
+    # Task 4: Visualize the model architecture using torchviz
+    resnet34 = models.resnet34(weights="IMAGENET1K_V1")
+    resnet34.eval()
+    # Create a dummy input tensor
+    dummy_input = torch.randn(1, 3, 224, 224)
+
+    # Perform a forward pass to get the output tensor
+    output = resnet34(dummy_input)
+
+    # Generate the graph visualization
+    # We visualize the output tensor and specify the model's parameters for a clearer graph.
+    dot = make_dot(output, params=dict(resnet34.named_parameters()))
+
+    # Save the graph to a file (e.g., PDF, PNG)
+    dot.render("resnet34_torchvision_graph", format="png", cleanup=True)
+
 
 
 if __name__ == "__main__":
-    main()
+    #main()
+    task4()
