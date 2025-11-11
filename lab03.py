@@ -49,7 +49,8 @@ def preprocess_image(img: np.ndarray) -> np.ndarray:
     # Task 2 : write a model input transformation pipeline
     # ImageNet-based pre-processing image transformations
     transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((256, 256)),
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ]) 
@@ -82,8 +83,101 @@ def task4():
     # Save the graph to a file (e.g., PDF, PNG)
     dot.render("resnet34_torchvision_graph", format="png", cleanup=True)
 
+def postprocess_filter(img_tensor: torch.Tensor):
+    """Helper function for post-processing and display."""
+    img = img_tensor.squeeze(0).cpu().detach().numpy()
+    img = np.transpose(img, (1, 2, 0))
+    # Normalize to [0, 1] for display
+    img = (img - img.min()) / (img.max() - img.min())
+    return img
 
+
+def visualize_filter(model, layer: str, filter_index: int, iterations: int = 50, lr: float = 0.1) -> np.ndarray:
+    """Generates an image that maximally activates a specified filter."""
+    # Start with a random noise image (our canvas)
+    image = torch.randn(1, 3, 224, 224, requires_grad=True)
+    optimizer = torch.optim.Adam([image], lr=lr, weight_decay=1e-6)
+
+    # We need to hook into the model to capture the output of our target layer
+    activation = None
+    def hook(model, input, output):
+        nonlocal activation
+        activation = output
+
+    handle = layer.register_forward_hook(hook)
+
+    print(f"Computing Filter #{filter_index} of layer {layer.__class__.__name__}...")
+    # Optimize the image to maximize the activation of the chosen filter
+    for i in range(iterations):
+        optimizer.zero_grad()
+        # Forward pass to get the activation
+        model(image)
+        # Our "loss" is the negative of the mean activation of the chosen filter.
+        # We negate it because optimizers minimize, but we want to maximize.
+        loss = -torch.mean(activation[0, filter_index])
+        loss.backward()
+        optimizer.step()
+
+    handle.remove() # Clean up the hook
+    return postprocess_filter(image)
+
+def task5():
+    # Task 5: Visualize filters from a convolutional layer
+    resnet34 = models.resnet34(weights="IMAGENET1K_V1")
+    resnet34.eval()
+    early_filter1 = visualize_filter(resnet34, resnet34.layer1[0].conv1, filter_index=0, iterations=50, lr=0.1)
+    early_filter2 = visualize_filter(resnet34, resnet34.layer1[0].conv1, filter_index=1, iterations=50, lr=0.1)
+    early_filter3 = visualize_filter(resnet34, resnet34.layer1[0].conv1, filter_index=2, iterations=50, lr=0.1)
+    middle_filter1 = visualize_filter(resnet34, resnet34.layer3[0].conv2, filter_index=0, iterations=50, lr=0.1)
+    middle_filter2 = visualize_filter(resnet34, resnet34.layer3[0].conv2, filter_index=1, iterations=50, lr=0.1)
+    middle_filter3 = visualize_filter(resnet34, resnet34.layer3[0].conv2, filter_index=2, iterations=50, lr=0.1)
+    late_filter1 = visualize_filter(resnet34, resnet34.layer4[1].conv1, filter_index=0, iterations=50, lr=0.1)
+    late_filter2 = visualize_filter(resnet34, resnet34.layer4[1].conv1, filter_index=1, iterations=50, lr=0.1)
+    late_filter3 = visualize_filter(resnet34, resnet34.layer4[1].conv1, filter_index=2, iterations=50, lr=0.1)
+
+    
+    fig, axs = plt.subplots(3, 3, figsize=(9, 9))
+    
+    axs[0, 0].imshow(early_filter1)
+    axs[0, 0].set_title("Early Layer - Filter 0")
+    axs[0, 0].axis('off')
+    
+    axs[0, 1].imshow(early_filter2)
+    axs[0, 1].set_title("Early Layer - Filter 1")
+    axs[0, 1].axis('off')
+    
+    axs[0, 2].imshow(early_filter3)
+    axs[0, 2].set_title("Early Layer - Filter 2")
+    axs[0, 2].axis('off')
+    
+    axs[1, 0].imshow(middle_filter1)
+    axs[1, 0].set_title("Middle Layer - Filter 0")
+    axs[1, 0].axis('off')
+    
+    axs[1, 1].imshow(middle_filter2)
+    axs[1, 1].set_title("Middle Layer - Filter 1")
+    axs[1, 1].axis('off')
+    
+    axs[1, 2].imshow(middle_filter3)
+    axs[1, 2].set_title("Middle Layer - Filter 2")
+    axs[1, 2].axis('off')
+    
+    axs[2, 0].imshow(late_filter1)
+    axs[2, 0].set_title("Late Layer - Filter 0")
+    axs[2, 0].axis('off')
+    
+    axs[2, 1].imshow(late_filter2)
+    axs[2, 1].set_title("Late Layer - Filter 1")
+    axs[2, 1].axis('off')
+    
+    axs[2, 2].imshow(late_filter3)
+    axs[2, 2].set_title("Late Layer - Filter 2")
+    axs[2, 2].axis('off')
+    
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     #main()
-    task4()
+    #task4()
+   task5()
