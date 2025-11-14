@@ -12,6 +12,10 @@ from torchvision import transforms
 from PIL import Image
 from torchviz import make_dot
 from captum.attr import IntegratedGradients
+from captum.attr import NoiseTunnel
+from captum.attr import GradientShap
+from captum.attr import LRP
+from captum.attr import Occlusion
 from captum.attr import visualization as viz
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -179,7 +183,7 @@ def task5():
     plt.tight_layout()
     plt.show()
 
-def task6():
+def task6_7_8():
     resnet34 = models.resnet34(weights="IMAGENET1K_V1")
     resnet34.eval()
 
@@ -226,9 +230,172 @@ def task6():
                              show_colorbar=True,
                              sign='positive',
                              outlier_perc=1)
+    # positive values point to pixels that increase the prediction score, negative attributions point to pixels that decrease the score
+    # absolute attribution value show the magnitude of the effect regardless of direction
 
+    # Add noise tunnel for smoother attributions
+    noise_tunnel = NoiseTunnel(integrated_gradients)
+    attributions_ig_nt = noise_tunnel.attribute(input, nt_samples=10, nt_type='smoothgrad_sq', target=predicted_label_idx)
+    _ = viz.visualize_image_attr_multiple(np.transpose(attributions_ig_nt.squeeze().cpu().detach().numpy(), (1,2,0)),
+                                        np.transpose(transformed_img.squeeze().cpu().detach().numpy(), (1,2,0)),
+                                        ["original_image", "heat_map"],
+                                        ["all", "positive"],
+                                        cmap=default_cmap,
+                                        show_colorbar=True)
+    
+def task9():
+    resnet34 = models.resnet34(weights="IMAGENET1K_V1")
+    resnet34.eval()
+
+    # Load the labels for ImageNet
+    labels_url = "https://s3.amazonaws.com/deep-learning-models/image-models/imagenet_class_index.json"
+    response = requests.get(labels_url)
+    labels = response.json()
+    labels = {int(k):v[1] for k,v in labels.items()}
+
+    img = Image.open("data/Kot-bengalski-brazowy.jpg")
+
+    transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor()
+        ])
+
+    transform_normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
+
+    transformed_img = transform(img)
+    input = transform_normalize(transformed_img).unsqueeze(0)
+    prediction = resnet34(input).squeeze(0).softmax(0)
+    predicted_label_idx = prediction.argmax().item()
+    predicted_label = labels[predicted_label_idx]
+    prediction_score = prediction[predicted_label_idx].item()
+
+    print(f'Predicted: {predicted_label}, ({prediction_score:.2f})')
+
+    integrated_gradients = IntegratedGradients(resnet34)
+    attributions_ig = integrated_gradients.attribute(input, target=predicted_label_idx, n_steps=200)
+
+    default_cmap = LinearSegmentedColormap.from_list('custom blue', 
+                                                 [(0, '#ffffff'),
+                                                  (0.25, '#000000'),
+                                                  (1, '#000000')], N=256)
+
+    # Add noise tunnel for smoother attributions
+    noise_tunnel = NoiseTunnel(integrated_gradients)
+    attributions_ig_nt = noise_tunnel.attribute(input, nt_samples=10, nt_type='smoothgrad_sq', target=predicted_label_idx)
+
+    # 
+    torch.manual_seed(0)
+    np.random.seed(0)
+
+    gradient_shap = GradientShap(resnet34)
+
+    # Defining baseline distribution of images
+    rand_img_dist = torch.cat([input * 0, input * 1])
+
+    attributions_gs = gradient_shap.attribute(input,
+                                            n_samples=50,
+                                            stdevs=0.0001,
+                                            baselines=rand_img_dist,
+                                            target=predicted_label_idx)
+    
+    occlusion = Occlusion(resnet34)
+
+    attributions_occ = occlusion.attribute(input,
+                                        strides = (3, 8, 8),
+                                        target=predicted_label_idx,
+                                        sliding_window_shapes=(3,15, 15),
+                                        baselines=0)
+    
+    attributions_occ_large = occlusion.attribute(input,
+                                       strides = (3, 50, 50),
+                                       target=predicted_label_idx,
+                                       sliding_window_shapes=(3,60, 60),
+                                       baselines=0)
+
+    fig, axes = plt.subplots(3, 2, figsize=(21, 14))
+    
+    # Original image
+    axes[0, 0].imshow(transformed_img.permute(1, 2, 0))
+    axes[0, 0].set_title("Original", fontsize=12, fontweight='bold')
+    axes[0, 0].axis('off')
+    
+    # Integrated Gradients
+    viz.visualize_image_attr(
+        np.transpose(attributions_ig.squeeze().cpu().detach().numpy(), (1,2,0)),
+        np.transpose(transformed_img.squeeze().cpu().detach().numpy(), (1,2,0)),
+        method='heat_map',
+        cmap=default_cmap,
+        sign='positive',
+        show_colorbar=True,
+        use_pyplot=False,
+        plt_fig_axis=(fig, axes[0, 1])
+    )
+    axes[0, 1].set_title("Integrated Gradients", fontsize=12, fontweight='bold')
+    
+    # IG + NoiseTunnel
+    viz.visualize_image_attr(
+        np.transpose(attributions_ig_nt.squeeze().cpu().detach().numpy(), (1,2,0)),
+        np.transpose(transformed_img.squeeze().cpu().detach().numpy(), (1,2,0)),
+        method='heat_map',
+        cmap=default_cmap,
+        sign='positive',
+        show_colorbar=True,
+        use_pyplot=False,
+        plt_fig_axis=(fig, axes[1, 0])
+    )
+    axes[1, 0].set_title("IG + NoiseTunnel", fontsize=12, fontweight='bold')
+    
+    # GradientShap
+    viz.visualize_image_attr(
+        np.transpose(attributions_gs.squeeze().cpu().detach().numpy(), (1,2,0)),
+        np.transpose(transformed_img.squeeze().cpu().detach().numpy(), (1,2,0)),
+        method='heat_map',
+        cmap=default_cmap,
+        sign='absolute_value',
+        show_colorbar=True,
+        use_pyplot=False,
+        plt_fig_axis=(fig, axes[1, 1])
+    )
+    axes[1, 1].set_title("GradientShap", fontsize=12, fontweight='bold')
+    
+    print("Note: this computation might take more than one minute to complete, as the model is evaluated at every position of the sliding window.")
+    # Occlusion
+    viz.visualize_image_attr(
+        np.transpose(attributions_occ.squeeze().cpu().detach().numpy(), (1,2,0)),
+        np.transpose(transformed_img.squeeze().cpu().detach().numpy(), (1,2,0)),
+        method='heat_map',
+        cmap=default_cmap,
+        sign='positive',
+        show_colorbar=True,
+        use_pyplot=False,
+        plt_fig_axis=(fig, axes[2, 0])
+    )
+    axes[2, 0].set_title("Occlusion (small patch)", fontsize=12, fontweight='bold')
+
+    # Occlusion with large patch
+    viz.visualize_image_attr(
+        np.transpose(attributions_occ_large.squeeze().cpu().detach().numpy(), (1,2,0)),
+        np.transpose(transformed_img.squeeze().cpu().detach().numpy(), (1,2,0)),
+        method='heat_map',
+        cmap=default_cmap,
+        sign='positive',
+        show_colorbar=True,
+        use_pyplot=False,
+        plt_fig_axis=(fig, axes[2, 1])
+    )
+    axes[2, 1].set_title("Occlusion (large patch)", fontsize=12, fontweight='bold')
+
+    plt.tight_layout()
+    plt.savefig("attribution_comparison.png", dpi=150, bbox_inches='tight')
+    plt.show()
+    
 
 if __name__ == "__main__":
     #main()
     #task4()
-   task6()
+    #task6_7_8()
+    task9()
