@@ -11,7 +11,9 @@ from torchvision import models
 from torchvision import transforms
 from PIL import Image
 from torchviz import make_dot
-
+from captum.attr import IntegratedGradients
+from captum.attr import visualization as viz
+from matplotlib.colors import LinearSegmentedColormap
 
 def main():
     # Task 1
@@ -177,7 +179,56 @@ def task5():
     plt.tight_layout()
     plt.show()
 
+def task6():
+    resnet34 = models.resnet34(weights="IMAGENET1K_V1")
+    resnet34.eval()
+
+    # Load the labels for ImageNet
+    labels_url = "https://s3.amazonaws.com/deep-learning-models/image-models/imagenet_class_index.json"
+    response = requests.get(labels_url)
+    labels = response.json()
+    labels = {int(k):v[1] for k,v in labels.items()}
+
+    img = Image.open("data/Kot-bengalski-brazowy.jpg")
+
+    transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor()
+        ])
+
+    transform_normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
+
+    transformed_img = transform(img)
+    input = transform_normalize(transformed_img).unsqueeze(0)
+    prediction = resnet34(input).squeeze(0).softmax(0)
+    predicted_label_idx = prediction.argmax().item()
+    predicted_label = labels[predicted_label_idx]
+    prediction_score = prediction[predicted_label_idx].item()
+
+    print(f'Predicted: {predicted_label}, ({prediction_score:.2f})')
+
+    integrated_gradients = IntegratedGradients(resnet34)
+    attributions_ig = integrated_gradients.attribute(input, target=predicted_label_idx, n_steps=200)
+
+    default_cmap = LinearSegmentedColormap.from_list('custom blue', 
+                                                 [(0, '#ffffff'),
+                                                  (0.25, '#000000'),
+                                                  (1, '#000000')], N=256)
+
+    _ = viz.visualize_image_attr(np.transpose(attributions_ig.squeeze().cpu().detach().numpy(), (1,2,0)),
+                             np.transpose(transformed_img.squeeze().cpu().detach().numpy(), (1,2,0)),
+                             method='heat_map',
+                             cmap=default_cmap,
+                             show_colorbar=True,
+                             sign='positive',
+                             outlier_perc=1)
+
+
 if __name__ == "__main__":
     #main()
     #task4()
-   task5()
+   task6()
