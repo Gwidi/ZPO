@@ -15,7 +15,7 @@ class LitVisionTransformer(L.LightningModule):
         self.save_hyperparameters() # Save hyperparameters
 
         self.vision_transformer = VisionTransformer(num_classes=num_classes, **kwargs)
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch.nn.CrossEntropyLoss(label_smoothing=0.1)
         
         metrics = MetricCollection({
             'accuracy': Accuracy(task="multiclass", num_classes=num_classes),
