@@ -4,4 +4,4 @@ __pycache__/
 *.pt
 CatsVsDogs/
 data/
-mlruns/
+mlruns/*
