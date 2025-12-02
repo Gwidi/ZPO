@@ -6,3 +6,4 @@ lightning
 mlflow
 torchviz
 captum
+ultralytics

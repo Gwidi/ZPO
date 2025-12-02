@@ -5,3 +5,5 @@ __pycache__/
 CatsVsDogs/
 data/
 mlruns/*
+lab07/mlruns/*
+lab07/runs/*
